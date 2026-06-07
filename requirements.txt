@@ -1,0 +1,15 @@
+langchain
+langchain-openai
+langchain-experimental
+openai
+
+beautifulsoup4
+cloudscraper
+requests
+playwright
+chromium
+
+fastapi
+
+python-dotenv
+tiktoken
