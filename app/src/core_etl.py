@@ -87,13 +87,28 @@ async def extract_html_content(url: str) -> str:
             )
             page = await context.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-
             # Y opcionalmente, agrega una pequeña espera inteligente:
             await page.wait_for_load_state("load")
             # Forzamos scroll para disparar cargas perezosas
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await asyncio.sleep(3)
-            texto_final = await page.evaluate("document.body.innerText")
+            selectores_content = ['article', 'main', '#content', '.entry-content', '.post-content']
+            texto_limpio = ""
+
+            for selector in selectores_content:
+                if await page.locator(selector).count() > 0:
+                    texto_limpio = await page.locator(selector).inner_text()
+                    break
+            if not texto_limpio:
+                texto_final = await page.evaluate("document.body.innerText")
+            else:
+                texto_final = texto_limpio
+            
+            # Eliminar espacios y saltos de línea extras
+            texto_final = re.sub(r'\n{3,}', '\n\n', texto_final)
+            texto_final = re.sub(r'[ ]{2,}', ' ', texto_final)
+            texto_final.strip()
+            
             await browser.close()
     except Exception as e:
         print(f"[!] Error al renderizar con Playwright: {e}")
@@ -113,10 +128,6 @@ async def get_html_content_metadata(url: str) -> dict:
 
 def generate_hash(text: str) -> str:
     return hashlib.md5(text.encode('utf-8')).hexdigest()
-
-def try_llm(prompt='hola'):
-    response = llm.invoke(prompt)
-    return(response)
     
 def refine_metadata_with_llm(datos_html: dict) -> dict:
     """
@@ -158,10 +169,10 @@ def refine_metadata_with_llm(datos_html: dict) -> dict:
     final_metadata.pop("content")
     return final_metadata
 
-def run_pipeline(url: str):
+async def run_pipeline(url: str):
     try:
         # Paso 1: Scraping e Ingesta Determinista
-        datos_html = get_html_content_metadata(url)
+        datos_html = await get_html_content_metadata(url)
         content_hash = generate_hash(datos_html['content'])
         print(f"[+] Datos extraídos. Hash: {content_hash}")
         
@@ -172,8 +183,13 @@ def run_pipeline(url: str):
         # Paso 3: Semantic Chunking
         print("[*] Ejecutando Semantic Chunking...")
         chunker = SemanticChunker(embeddings)
-        chunks = chunker.create_documents([datos_html['texto_limpio']])
+        chunks = chunker.create_documents([datos_html['content']])
         print(f"[+] Documento dividido en {len(chunks)} chunks semánticos.")
+        for i, chunk in enumerate(chunks[:3]):
+            print(f"--- Chunk {i+1} ---")
+            print(f"Longitud: {len(chunk.page_content)} caracteres")
+            print(f"Contenido: {chunk.page_content}")
+            print("\n")
         
         print("\n=== PRUEBA DE PIPELINE EXITOSA ===")
         print(json.dumps(metadatos_finales, indent=2, ensure_ascii=False))
