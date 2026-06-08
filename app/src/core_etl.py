@@ -132,12 +132,21 @@ async def extract_html_content(url: str) -> str:
 async def get_html_content_metadata(url: str) -> dict:
     metadata = get_html_metadata(url)
     content = await extract_html_content(url)
-    access_errors = ["access denied", "forbidden", "don't have permission"]
-    if any(err in content.lower() for err in access_errors):
-        metadata['error'] = 'access denied'
-    not_found = ['not found']
-    if any(err in content.lower() for err in not_found):
-        metadata['error'] = 'page not found'
+    
+    # Mapa de errores y sus palabras clave
+    error_patterns = {
+        'access denied': ["access denied", "forbidden", "don't have permission", "403"],
+        'page not found': ["not found", "404", "página no encontrada"],
+        'captcha': ["captcha", "verificación de seguridad", "browser check"],
+        'empty content': ["", "please enable javascript"]
+    }
+    
+    content_lower = content.lower()
+    for error_type, keywords in error_patterns.items():
+        if any(kw in content_lower for kw in keywords):
+            metadata['error'] = error_type
+            break # Encontramos el error, no necesitamos buscar más
+            
     metadata['content'] = content
     metadata['url'] = url
     return metadata
