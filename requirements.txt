@@ -1,6 +1,7 @@
 langchain
 langchain-openai
 langchain-experimental
+langchain-community
 openai
 
 beautifulsoup4
@@ -13,3 +14,6 @@ fastapi
 
 python-dotenv
 tiktoken
+
+azure-search-documents
+azure-identity

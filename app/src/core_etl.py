@@ -9,6 +9,11 @@ from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_experimental.text_splitter import SemanticChunker
 from playwright.async_api import async_playwright
+from langchain_community.vectorstores import AzureSearch
+from langchain_core.documents import Document
+from azure.search.documents import SearchClient
+from azure.core.credentials import AzureKeyCredential
+from datetime import datetime
 
 load_dotenv()
 
@@ -28,16 +33,24 @@ embeddings = AzureOpenAIEmbeddings(
     api_version="2024-02-01"
 )
 
+vector_store = AzureSearch(
+    azure_search_endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
+    azure_search_key=os.getenv("AZURE_SEARCH_KEY"),
+    index_name=os.getenv("AZURE_SEARCH_INDEX_NAME"),
+    embedding_function=embeddings.embed_query,
+    metadata_mode="none"
+)
+
 def get_html_metadata(url: str) -> dict:
     """
     Descarga el HTML y extrae metadatos SEO básicos de forma determinista.
     """
     print(f"[*] Descargando HTML de: {url}")
     soup = None
-    idioma = "Desconocido"
-    titulo = "Desconocido"
-    autor = "Desconocido"
-    descripcion = ""
+    language = "Unknown"
+    title = "Unknown"
+    author = "Unknown"
+    description = ""
     
     try:
         scraper = cloudscraper.create_scraper() 
@@ -51,23 +64,23 @@ def get_html_metadata(url: str) -> dict:
 
     if soup is not None:
         html_tag = soup.find('html')
-        idioma = html_tag.get('lang', 'Desconocido') if html_tag else 'Desconocido'
+        language = html_tag.get('lang', 'Unknown') if html_tag else 'Unknown'
         
         og_title = soup.find('meta', property='og:title')
         title_tag = soup.find('title')
-        titulo = og_title['content'] if og_title else (title_tag.get_text() if title_tag else "Desconocido")
+        title = og_title['content'] if og_title else (title_tag.get_text() if title_tag else "Unknown")
         
         author_meta = soup.find('meta', attrs={'name': 'author'})
-        autor = author_meta['content'] if author_meta else "Desconocido"
+        author = author_meta['content'] if author_meta else "Unknown"
         
         desc_meta = soup.find('meta', attrs={'name': 'description'}) or soup.find('meta', property='og:description')
-        descripcion = desc_meta['content'] if desc_meta else ""
+        description = desc_meta['content'] if desc_meta else ""
 
     return {
-        "idioma": idioma,
-        "titulo": titulo,
-        "autor": autor,
-        "descripcion_previa": descripcion
+        "language": language,
+        "title": title,
+        "author": author,
+        "description_previa": description
     }
 
 async def extract_html_content(url: str) -> str:
@@ -87,7 +100,7 @@ async def extract_html_content(url: str) -> str:
             )
             page = await context.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-            # Y opcionalmente, agrega una pequeña espera inteligente:
+            # Espera inteligente:
             await page.wait_for_load_state("load")
             # Forzamos scroll para disparar cargas perezosas
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
@@ -107,7 +120,7 @@ async def extract_html_content(url: str) -> str:
             # Eliminar espacios y saltos de línea extras
             texto_final = re.sub(r'\n{3,}', '\n\n', texto_final)
             texto_final = re.sub(r'[ ]{2,}', ' ', texto_final)
-            texto_final.strip()
+            texto_final = texto_final.strip()
             
             await browser.close()
     except Exception as e:
@@ -122,6 +135,9 @@ async def get_html_content_metadata(url: str) -> dict:
     access_errors = ["access denied", "forbidden", "don't have permission"]
     if any(err in content.lower() for err in access_errors):
         metadata['error'] = 'access denied'
+    not_found = ['not found']
+    if any(err in content.lower() for err in not_found):
+        metadata['error'] = 'page not found'
     metadata['content'] = content
     metadata['url'] = url
     return metadata
@@ -134,16 +150,16 @@ def refine_metadata_with_llm(datos_html: dict) -> dict:
     Usa el LLM solo para lo que BeautifulSoup no puede hacer:
     Sintetizar un resumen médico y extraer palabras clave.
     """
-    print("[*] Ejecutando análisis cognitivo con gpt-4o-mini...")
+    print(f"[*] Ejecutando análisis cognitivo con  ...")
     
     prompt = f"""
     Eres un asistente médico experto. Analiza este texto y genera ÚNICAMENTE un objeto JSON válido.
     
     Ya tenemos estos datos extraídos de la web:
     - URL: {datos_html['url']}
-    - Título: {datos_html['titulo']}
-    - Autor: {datos_html['autor']}
-    - Descripción SEO: {datos_html['descripcion_previa']}
+    - Título: {datos_html['title']}
+    - author: {datos_html['author']}
+    - Descripción SEO: {datos_html['description_previa']}
     
     Tu tarea:
     1. Determina el "publisher" (entidad que publica). Si es una página genérica, deduce el nombre del sitio web.
@@ -169,33 +185,119 @@ def refine_metadata_with_llm(datos_html: dict) -> dict:
     final_metadata.pop("content")
     return final_metadata
 
+def send_2_aisearch(content, metadata):
+    # 1. Inicializar cliente nativo
+    client = SearchClient(
+        endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
+        index_name=os.getenv("AZURE_SEARCH_INDEX_NAME"),
+        credential=AzureKeyCredential(os.getenv("AZURE_SEARCH_KEY"))
+    )
+
+    # --- SUBIDA DEL SUMMARY ---
+    summary_vector = embeddings.embed_query(metadata["summary"])
+    summary_doc = {
+        "id": generate_hash(metadata['url'] + "_summary"),
+        "content": metadata["summary"],
+        "content_vector": summary_vector,
+        "type": "summary",
+        "url": metadata['url'],
+        "title": metadata['title'],
+        "author": metadata['author'],
+        "keywords": ", ".join(metadata['keywords']),
+        "language": metadata['language'],
+        "publisher": metadata['publisher'],
+        "content_hash": metadata['content_hash'],
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Usamos upload_documents (el método nativo)
+    client.upload_documents(documents=[summary_doc])
+    
+    # --- SUBIDA DE LOS CHUNKS ---
+    print("[*] Ejecutando Semantic Chunking...")
+    chunker = SemanticChunker(embeddings)
+    # create_documents devuelve una lista de objetos Document; usamos page_content
+    docs = chunker.create_documents([content])
+    
+    chunk_list = []
+    for i, doc in enumerate(docs):
+        chunk_text = doc.page_content
+        vector = embeddings.embed_query(chunk_text)
+        
+        chunk_doc = {
+            "id": generate_hash(metadata['url'] + str(i)),
+            "content": chunk_text,
+            "content_vector": vector,
+            "type": "chunk",
+            "url": metadata['url'],
+            "title": metadata['title'],
+            "author": metadata['author'],
+            "keywords": ", ".join(metadata['keywords']),
+            "language": metadata['language'],
+            "publisher": metadata['publisher'],
+            "content_hash": metadata['content_hash'],
+            "timestamp": datetime.now().isoformat()
+        }
+        chunk_list.append(chunk_doc)
+    
+    # Subir todos los chunks en un solo lote (batch) para mayor eficiencia
+    client.upload_documents(documents=chunk_list)
+    print(f"[+] Documento y {len(chunk_list)} chunks subidos exitosamente.")
+    
 async def run_pipeline(url: str):
     try:
         # Paso 1: Scraping e Ingesta Determinista
         datos_html = await get_html_content_metadata(url)
+        if 'error' in datos_html.keys():
+            raise PermissionError(f"No fue posible hacer web-scrapping de: {url} ")
         content_hash = generate_hash(datos_html['content'])
-        print(f"[+] Datos extraídos. Hash: {content_hash}")
         
-        # Paso 2: Enriquecimiento Cognitivo (LLM)
-        metadatos_finales = refine_metadata_with_llm(datos_html)
-        print(f"[+] Metadatos completos: {metadatos_finales['titulo']} (Autor: {metadatos_finales['autor']})")
-        
-        # Paso 3: Semantic Chunking
-        print("[*] Ejecutando Semantic Chunking...")
-        chunker = SemanticChunker(embeddings)
-        chunks = chunker.create_documents([datos_html['content']])
-        print(f"[+] Documento dividido en {len(chunks)} chunks semánticos.")
-        for i, chunk in enumerate(chunks[:3]):
-            print(f"--- Chunk {i+1} ---")
-            print(f"Longitud: {len(chunk.page_content)} caracteres")
-            print(f"Contenido: {chunk.page_content}")
-            print("\n")
-        
+        # Verificar que si la url ya se había registrado
+        estado = verificar_estado_documento(url, content_hash)
+        if estado == "IGUAL":
+            print("[*] Contenido sin cambios, saltando.")
+        else:
+            # Paso 2: Enriquecimiento Cognitivo (LLM)
+            metadatos_finales = refine_metadata_with_llm(datos_html)
+            metadatos_finales['content_hash'] = content_hash
+            print(f"[+] Metadatos completos: {metadatos_finales['title']} (author: {metadatos_finales['author']})")
+            if estado == "NUEVO":
+                print("[+] URL nueva, indexando...")
+                send_2_aisearch(datos_html['content'], metadatos_finales)   
+            else:
+                print("[!] Contenido modificado, actualizando...")
+                # 1. Borrar registros antiguos filtrando por URL
+                vector_store.delete(filter=f"url eq '{url}'") 
+                # 2. Insertar nuevos
+                send_2_aisearch(datos_html['content'], metadatos_finales)
         print("\n=== PRUEBA DE PIPELINE EXITOSA ===")
-        print(json.dumps(metadatos_finales, indent=2, ensure_ascii=False))
-
     except Exception as e:
         print(f"[!] Error en el pipeline: {e}")
+        
+def verificar_estado_documento(url: str, nuevo_hash: str):
+    # Buscamos documentos que tengan esa URL
+    # Nota: Asegúrate de que 'url' y 'content_hash' sean filterable=True en Azure
+    client = SearchClient(
+        endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
+        index_name=os.getenv("AZURE_SEARCH_INDEX_NAME"),
+        credential=AzureKeyCredential(os.getenv("AZURE_SEARCH_KEY"))
+    )
+    
+    # Búsqueda nativa (sin colisiones)
+    results = list(client.search(
+        search_text="*", 
+        filter=f"url eq '{url}'",
+        select=["content_hash"]
+    ))
+    if not results:
+        return "NUEVO"
+    # Si existe, comparamos el hash
+    hash_existente = results[0].get('content_hash')
+    
+    if hash_existente == nuevo_hash:
+        return "IGUAL"
+    else:
+        return "ACTUALIZAR"
 
 if __name__ == "__main__":
     # URL que proporcionaste como ejemplo
