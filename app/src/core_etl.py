@@ -132,20 +132,21 @@ async def extract_html_content(url: str) -> str:
 async def get_html_content_metadata(url: str) -> dict:
     metadata = get_html_metadata(url)
     content = await extract_html_content(url)
-    
     # Mapa de errores y sus palabras clave
     error_patterns = {
         'access denied': ["access denied", "forbidden", "don't have permission", "403"],
         'page not found': ["not found", "404", "página no encontrada"],
         'captcha': ["captcha", "verificación de seguridad", "browser check"],
-        'empty content': ["", "please enable javascript"]
     }
     
-    content_lower = content.lower()
-    for error_type, keywords in error_patterns.items():
-        if any(kw in content_lower for kw in keywords):
-            metadata['error'] = error_type
-            break # Encontramos el error, no necesitamos buscar más
+    if len(content) < 50:
+        metadata['error'] = error_type
+    else:
+        content_lower = content.lower()
+        for error_type, keywords in error_patterns.items():
+            if any(kw in content_lower for kw in keywords):
+                metadata['error'] = error_type
+                break # Encontramos el error, no necesitamos buscar más
             
     metadata['content'] = content
     metadata['url'] = url
@@ -258,7 +259,7 @@ async def run_pipeline(url: str):
         # Paso 1: Scraping e Ingesta Determinista
         datos_html = await get_html_content_metadata(url)
         if 'error' in datos_html.keys():
-            raise PermissionError(f"No fue posible hacer web-scrapping de: {url} ")
+            raise PermissionError(f"No fue posible hacer web-scrapping de: {url} \n {datos_html['error']}")
         content_hash = generate_hash(datos_html['content'])
         
         # Verificar que si la url ya se había registrado
@@ -307,7 +308,18 @@ def verificar_estado_documento(url: str, nuevo_hash: str):
         return "IGUAL"
     else:
         return "ACTUALIZAR"
+    
+async def batch_processor(urls):
+    # Limitamos la concurrencia a 5 para no saturar los servicios
+        semaphore = asyncio.Semaphore(5)
+        
+        async def process_with_limit(url):
+            async with semaphore:
+                await run_pipeline(url)
 
+        tasks = [process_with_limit(url) for url in urls]
+        await asyncio.gather(*tasks)
+        
 if __name__ == "__main__":
     # URL que proporcionaste como ejemplo
     TEST_URL = "https://retinia.mx/agudeza-visual-av/"
