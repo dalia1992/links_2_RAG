@@ -10,10 +10,15 @@ requests
 playwright
 chromium
 
-fastapi
 
 python-dotenv
 tiktoken
 
 azure-search-documents
 azure-identity
+
+azure-servicebus
+pandas
+numpy
+
+fastapi

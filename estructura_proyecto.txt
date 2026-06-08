@@ -1,0 +1,26 @@
+.
+├── Dockerfile
+├── README.md
+├── app
+│   ├── data
+│   │   └── URLs de referencia - Hoja 1.csv
+│   ├── scripts
+│   │   ├── producer_service_bus.py
+│   │   └── worker_service_bus.py
+│   ├── src
+│   │   ├── __pycache__
+│   │   │   └── core_etl.cpython-311.pyc
+│   │   ├── core_etl.py
+│   │   ├── create_aisearch.py
+│   │   └── worker_service_bus.py
+│   └── tests
+│       ├── __pycache__
+│       │   └── test_extract_and_clean_html.cpython-311.pyc
+│       ├── test_extract_and_clean_html.py
+│       └── test_local_batch.py
+├── errores_batch.log
+├── estructura_proyecto.txt
+├── requirements.txt
+└── review.ipynb
+
+8 directories, 16 files
