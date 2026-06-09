@@ -140,7 +140,7 @@ async def get_html_content_metadata(url: str) -> dict:
     }
     
     if len(content) < 50:
-        metadata['error'] = error_type
+        metadata['error'] = 'Not enough content retrieved'
     else:
         content_lower = content.lower()
         for error_type, keywords in error_patterns.items():
@@ -283,6 +283,7 @@ async def run_pipeline(url: str):
         print("\n=== PRUEBA DE PIPELINE EXITOSA ===")
     except Exception as e:
         print(f"[!] Error en el pipeline: {e}")
+        raise
         
 def verificar_estado_documento(url: str, nuevo_hash: str):
     # Buscamos documentos que tengan esa URL

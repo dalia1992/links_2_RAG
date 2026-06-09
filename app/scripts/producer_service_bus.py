@@ -2,6 +2,7 @@ import os
 import asyncio
 from azure.servicebus.aio import ServiceBusClient
 from azure.servicebus import ServiceBusMessage
+from azure.servicebus import TransportType
 from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
@@ -16,7 +17,8 @@ async def fill_queue(urls):
     """
     Toma una lista de URLs y las envía todas a la cola de Service Bus.
     """
-    async with ServiceBusClient.from_connection_string(CONNECTION_STR) as client:
+    async with ServiceBusClient.from_connection_string(CONNECTION_STR,
+                                                       transport_type=TransportType.AmqpOverWebsocket) as client:
         sender = client.get_queue_sender(queue_name=QUEUE_NAME)
         async with sender:
             print(f"[*] Conectado a la cola '{QUEUE_NAME}'. Iniciando carga de {len(urls)} URLs...")

@@ -20,5 +20,3 @@ azure-identity
 azure-servicebus
 pandas
 numpy
-
-fastapi

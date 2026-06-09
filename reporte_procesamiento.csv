@@ -1,0 +1,18 @@
+Hora_Fin,URL,Estado,Tiempo_Segundos,Detalle_Error
+2026-06-08 19:57:24,https://www.apa.org/topics/disasters-response/huracan?partner=nlm,FALLO,9.39,cannot access local variable 'error_type' where it is not associated with a value
+2026-06-08 19:57:57,https://medlineplus.gov/spanish/ency/patientinstructions/000034.htm,FALLO,33.25,cannot access local variable 'error_type' where it is not associated with a value
+2026-06-08 19:58:29,https://medlineplus.gov/spanish/ency/patientinstructions/000135.htm,FALLO,32.13,cannot access local variable 'error_type' where it is not associated with a value
+2026-06-08 19:58:39,https://www.apa.org/topics/psychotherapy/psicoterapia,FALLO,9.7,cannot access local variable 'error_type' where it is not associated with a value
+2026-06-08 19:58:43,https://www.mayoclinic.org/es-es/symptoms/red-eye/basics/definition/sym-20050748,FALLO,3.9,"No fue posible hacer web-scrapping de: https://www.mayoclinic.org/es-es/symptoms/red-eye/basics/definition/sym-20050748 
+ access denied"
+2026-06-08 19:58:47,https://www.mayoclinic.org/es-es/symptoms/bent-penis/basics/definition/sym-20050628,FALLO,3.78,"No fue posible hacer web-scrapping de: https://www.mayoclinic.org/es-es/symptoms/bent-penis/basics/definition/sym-20050628 
+ access denied"
+2026-06-08 20:16:31,https://www.cdc.gov/foodsafety/es/symptoms-es.html,EXITO,10.82,N/A
+2026-06-08 20:16:39,https://www.youtube.com/watch?v=e4lWcZ8GKEI&list=PLd_5BzGlfpgrAdm94vZ1Xn_UdNeLpXX4g&index=20,FALLO,7.79,"No fue posible hacer web-scrapping de: https://www.youtube.com/watch?v=e4lWcZ8GKEI&list=PLd_5BzGlfpgrAdm94vZ1Xn_UdNeLpXX4g&index=20 
+ empty page"
+2026-06-08 20:16:46,https://salud.nih.gov/preguntele-a-carla/el-sol-puede-realmente-provocar-cancer-y-hacer-que-luzca-mas-viejo,FALLO,6.7,"No fue posible hacer web-scrapping de: https://salud.nih.gov/preguntele-a-carla/el-sol-puede-realmente-provocar-cancer-y-hacer-que-luzca-mas-viejo 
+ empty page"
+2026-06-08 20:16:57,https://medlineplus.gov/spanish/recetas/repollo-morado-con-manzanas/,EXITO,10.41,N/A
+2026-06-08 20:17:07,https://medlineplus.gov/spanish/recetas/tortilla-de-verduras-en-taza/,EXITO,10.69,N/A
+2026-06-08 20:17:39,https://medlineplus.gov/spanish/ency/patientinstructions/000157.htm,FALLO,31.88,"No fue posible hacer web-scrapping de: https://medlineplus.gov/spanish/ency/patientinstructions/000157.htm 
+ empty page"
