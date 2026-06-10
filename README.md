@@ -5,6 +5,7 @@ Proyecto final para Diseño de Infraestructura Escalable
 BSG Institute
 9 de junio 2026
 Repositorio de githu: https://github.com/dalia1992/links_2_RAG.
+
 Video de código y desarrollo: https://drive.google.com/file/d/1ohX3PpQipuFOeOYjX8fmnkns1FE8eKBp/view?usp=sharing 
 
 Video de ejemplificación de consultas a AI Search: https://drive.google.com/file/d/1fipl8B-kTG53onAi6be_QCaHKHaEvURy/view?usp=sharing 
