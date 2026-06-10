@@ -44,22 +44,22 @@ Para desplegar y operar el pipeline de ingesta masiva, el administrador debe seg
 Fase 2: Configuración (.env)
 
 Ejemplo de lo que incluye el .env
-# OPENAI CONNECTION
+#### OPENAI CONNECTION
 AZURE_OPENAI_API_KEY=XXXXX
 AZURE_OPENAI_ENDPOINT=https://XXX-XXX.cognitiveservices.azure.com/
 
-# LLM
+#### LLM
 DEPLOYMENT_NAME_LLM=gpt-4.1-mini
 
-# EMBEDDINGS
+#### EMBEDDINGS
 DEPLOYMENT_NAME_EMBEDDINGS=text-embedding-3-small
 
-# AISEARCH
+#### AISEARCH
 AZURE_SEARCH_ENDPOINT=https://XXXX.search.windows.net
 AZURE_SEARCH_KEY=XXXX
 AZURE_SEARCH_INDEX_NAME=links_index
 
-# SERVICE BUS
+#### SERVICE BUS
 SERVICEBUS_CONNECTION_STR=Endpoint=sb://XXXX
 SERVICEBUS_QUEUE_NAME=urls-to-process
 
