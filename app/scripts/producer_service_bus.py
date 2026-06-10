@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # Leer el CSV
     df = pd.read_csv(csv_path)
     urls = df['URL'].dropna().tolist()
-    urls = np.random.choice(urls, 10, replace=False)
+    #urls = np.random.choice(urls, 10, replace=False)
     try:
         asyncio.run(fill_queue(urls))
         print("[*] Carga finalizada exitosamente.")
