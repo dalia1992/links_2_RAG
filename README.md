@@ -24,9 +24,9 @@ El código se encuentra en el repositorio de github: https://github.com/dalia199
 
 El caso de uso específico de donde surge el requerimiento es poder incluir ligas de fuentes confiables para robustecer recomendaciones de salud que genera un LLM y pueda redirigir a los usuarios a estas ligas donde la información es más amplia, manteniendo la seguridad de que la fuente es fidedigna.
 
-•	Objetivo: Consultar la base de Azure AI Search para obtener links complementarios para recomendaciones de salud basadas en fuentes consolidadas como la Organización Mundial de la Salud, la American Psychological Association. Así como incluir referencias a blogs creado específicamente para apoyar con algunas recomendaciones específicas.
-•	Transparencia: Cada fragmento de información recuperado mantiene trazabilidad directa con su URL original, título, fuente y autor, garantizando que el usuario final reciba fuentes verificadas.
-•	Nota de uso: En esta primera fase del proceso ETL, el sistema opera a nivel de backend (base de datos vectorial), sentando los cimientos de infraestructura para una futura integración con una interfaz gráfica orientada al usuario final.
+*	**Objetivo:** Consultar la base de Azure AI Search para obtener links complementarios para recomendaciones de salud basadas en fuentes consolidadas como la Organización Mundial de la Salud, la American Psychological Association. Así como incluir referencias a blogs creado específicamente para apoyar con algunas recomendaciones específicas.
+*	**Transparencia:** Cada fragmento de información recuperado mantiene trazabilidad directa con su URL original, título, fuente y autor, garantizando que el usuario final reciba fuentes verificadas.
+*	**Nota de uso:** En esta primera fase del proceso ETL, el sistema opera a nivel de backend (base de datos vectorial), sentando los cimientos de infraestructura para una futura integración con una interfaz gráfica orientada al usuario final.
 
 ## 2. Guía de Administrador
 Para desplegar y operar el pipeline de ingesta masiva, el administrador debe seguir este flujo de aprovisionamiento:
@@ -73,14 +73,14 @@ VIDEO
 
 ## 3. Caso de Uso
 El objetivo principal es la ingesta masiva de URLs institucionales y de salud para construir un motor de búsqueda y recomendaciones.
+
 El pipeline realiza web scraping, enriquece metadatos vía LLMs y genera embeddings, depositando tanto un summary (resumen) como chunks detallados en Azure AI Search.
+
 Esto permite que una futura aplicación RAG ofrezca, junto con sus respuestas, enlaces validados y útiles.
+
 El esquema doble (summary y chunks) está diseñado para que la selección inicial de URLs relevantes se base en la visión general del enlace (el resumen).
+
 Si posteriormente se desea hacer grounding detallado de las respuestas, el sistema puede filtrar sobre esas URLs relevantes y hacer la búsqueda semántica de alta granularidad únicamente en los chunks internos de esos documentos.
-<img width="8191" height="1437" alt="CSV Data Processing Workflow-2026-06-10-020806" src="https://github.com/user-attachments/assets/1c64e341-e081-41ff-bdad-27eb2b5fa0de" />
-
-<img width="4406" height="305" alt="CSV Data Processing Workflow-2026-06-10-014733" src="https://github.com/user-attachments/assets/80b1dc14-bb42-42c2-9b68-54c6e946f036" />
-
 
 ## 4. Arquitectura
 Se implementó una arquitectura desacoplada y orientada a eventos:
