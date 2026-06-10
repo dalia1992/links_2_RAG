@@ -6,6 +6,7 @@ BSG Institute
 9 de junio 2026
 Repositorio de githu: https://github.com/dalia1992/links_2_RAG.
 Video de código y desarrollo: https://drive.google.com/file/d/1ohX3PpQipuFOeOYjX8fmnkns1FE8eKBp/view?usp=sharing 
+
 Video de ejemplificación de consultas a AI Search: https://drive.google.com/file/d/1fipl8B-kTG53onAi6be_QCaHKHaEvURy/view?usp=sharing 
 
 ## Pasar links de una lista a una base vectorizada en Azure AI Search
@@ -13,25 +14,34 @@ Video de ejemplificación de consultas a AI Search: https://drive.google.com/fil
 **Objetivo:** Crear un ETL que a partir de archivos .csv o links haga un webscraping para obtener el contenido relevante; posterior a ello extraer metadatos y embeddings. Los cuales se incluirán en una base de Azure AI Search, que pueda ser consultada para incluir links en recomendaciones a usuarios, para que estos consulten las ligas directamente. 
 
 
-1. Guía de Usuario
-El objetivo con Links2RAG es crear una base vectorizada a partir del contenido de URLs con lo que sea posible hacer una búsqueda de links relevantes de fuentes validadas. 
+## 1. Guía de Usuario
+El objetivo con Links2RAG es crear una base vectorizada a partir del contenido de URLs con lo que sea posible hacer una búsqueda de links relevantes de fuentes validadas.
+
 Con ello posteriormente será posible agregar información de los links a y brindar la referencia específica para consulta a los usuarios de un chat.
+
 El código se encuentra en el repositorio de github: https://github.com/dalia1992/links_2_RAG. 
+
 El caso de uso específico de donde surge el requerimiento es poder incluir ligas de fuentes confiables para robustecer recomendaciones de salud que genera un LLM y pueda redirigir a los usuarios a estas ligas donde la información es más amplia, manteniendo la seguridad de que la fuente es fidedigna.
+
 •	Objetivo: Consultar la base de Azure AI Search para obtener links complementarios para recomendaciones de salud basadas en fuentes consolidadas como la Organización Mundial de la Salud, la American Psychological Association. Así como incluir referencias a blogs creado específicamente para apoyar con algunas recomendaciones específicas.
 •	Transparencia: Cada fragmento de información recuperado mantiene trazabilidad directa con su URL original, título, fuente y autor, garantizando que el usuario final reciba fuentes verificadas.
 •	Nota de uso: En esta primera fase del proceso ETL, el sistema opera a nivel de backend (base de datos vectorial), sentando los cimientos de infraestructura para una futura integración con una interfaz gráfica orientada al usuario final.
-2. Guía de Administrador
+
+## 2. Guía de Administrador
 Para desplegar y operar el pipeline de ingesta masiva, el administrador debe seguir este flujo de aprovisionamiento:
-Fase 0: Requerimientos
+
+### Fase 0: Requerimientos
+
 1.	Entorno virtual: Crear un entorno virutal con python, en este caso la versión que utilicé fue 3.11.15.
 2.	Instalar requerimientos: pip install -r requirements.txt
 
-Fase 1: Infraestructura en Azure
+### Fase 1: Infraestructura en Azure
+
 1.	Azure Foundry: Habilitar modelos de Embeddings (text-embedding-3-small) y Chat (gpt-4.1-mini). 
 2.	Azure AI Search: Crear el servicio de búsqueda que alojará el índice vectorial.
 3.	Azure Service Bus: Configurar una Cola (Queue) para orquestar la lista de URLs a procesar.
 Fase 2: Configuración (.env)
+
 Ejemplo de lo que incluye el .env
 # OPENAI CONNECTION
 AZURE_OPENAI_API_KEY=XXXXX
@@ -66,6 +76,10 @@ El pipeline realiza web scraping, enriquece metadatos vía LLMs y genera embeddi
 Esto permite que una futura aplicación RAG ofrezca, junto con sus respuestas, enlaces validados y útiles.
 El esquema doble (summary y chunks) está diseñado para que la selección inicial de URLs relevantes se base en la visión general del enlace (el resumen).
 Si posteriormente se desea hacer grounding detallado de las respuestas, el sistema puede filtrar sobre esas URLs relevantes y hacer la búsqueda semántica de alta granularidad únicamente en los chunks internos de esos documentos.
+<img width="8191" height="1437" alt="CSV Data Processing Workflow-2026-06-10-020806" src="https://github.com/user-attachments/assets/1c64e341-e081-41ff-bdad-27eb2b5fa0de" />
+
+<img width="4406" height="305" alt="CSV Data Processing Workflow-2026-06-10-014733" src="https://github.com/user-attachments/assets/80b1dc14-bb42-42c2-9b68-54c6e946f036" />
+
 
 ## 4. Arquitectura
 Se implementó una arquitectura desacoplada y orientada a eventos:
@@ -83,6 +97,7 @@ El código del ETL está en `src/core_etl.py`
   * Sanitización de espacios y saltos de línea con RegEx.
   * Detección automática de errores como 404, 403 o Captchas.
 * **Load:** Subida de chunks directo a Azure AI Search (`client.upload_documents`).
+<img width="8191" height="1437" alt="CSV Data Processing Workflow-2026-06-10-020806" src="https://github.com/user-attachments/assets/0e7d1275-57d9-45b7-a75d-cb5aabd61e24" />
 
 ## 6. Patrones LLM
 * **Metadata Enrichment Pattern:** Dado que el scraping determinista no siempre captura buen contexto, se usa AzureChatOpenAI para generar un resumen semántico de 100 palabras, extraer 3 keywords clínicas y deducir el publisher a partir del texto crudo.
@@ -97,6 +112,8 @@ Se eligió AzureOpenAIEmbeddings generando vectores de dimensión 1536 con text-
 
 ## 9. Benchmarking de Indexación
 La elección de Azure AI Search se justifica por su soporte nativo de búsquedas vectoriales que garantiza una latencia menor.
+<img width="4406" height="305" alt="CSV Data Processing Workflow-2026-06-10-014733" src="https://github.com/user-attachments/assets/2ead0dd9-d662-4205-a858-c0fa82b47463" />
+
 Además, su configuración permite metadatos filtrables (`filterable=True`) en campos como URL, Autor, Type y Hash, lo cual es crítico para manejar actualizaciones del pipeline y poder extraer ya sea en links mediante el embedding del resumen o el contenido específico de chunks dentro de una o varias URLs específicas.
 
 ## 10. Versionamiento
@@ -129,9 +146,12 @@ Los tipos de errores fueron:
 
 Se debe revisar el método de scrapping para los casos donde no se hizo retrieval de contenido suficiente, probablemente hay algo por corregir en el proceso.
 Sin embargo, los 288 page not found no será posible procesarlos, probablemente por cambio de dominios, ya que la lista inicial de URLs se generó en 2024. Es importante considerar estos cambios, que suelen ocurrir e integrar la eliminación de URLs de la base de conocimiento o agregar una flag de que la página ya no existe, esto para evitar que los usuarios sean dirigidos a páginas inexistentes.
+
 Para los access denied habría que revisar a detalle si es posible hacer modificaciones al webscraping para sobrepasar las restricciones o si no es posible.
 El error de service quota puede estar relacionado a que se excedieron las solicitudes a procesar en ese momento.
 El tiempo que tomó en promedio procesar los links exitosos fue: 11.9 segundos, el mínimo de 8 segundos y el máximo de 43.4 segundos.
+<img width="490" height="512" alt="image" src="https://github.com/user-attachments/assets/35b51950-3eb1-4149-b025-6c64796dca1d" />
+
 
 ## 12. Lecciones Aprendidas
 * **Limpieza de Datos:** La extracción de datos y su correcta carga a una base vectorizada es primordial para el éxito de un sistema RAG. Para que la información sea verdaderamente útil para un LLM, es crítico eliminar el "ruido" web (navegación, footers) y espacios adicionales, lo que a su vez disminuye drásticamente los costos por tokens procesados.
